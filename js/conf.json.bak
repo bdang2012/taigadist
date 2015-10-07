@@ -1,7 +1,9 @@
 {
-    "api": "http://casting.bcspecials.com/api/v1/",
-    "eventsUrl": "ws://casting.bcspecials.com/events",
-    "debug": "true",
+    "api": "http://castingpro.bcspecials.com/api/v1/",
+    "eventsUrl": null,
+    "debug": true,
+    "debugInfo": false,
+    "defaultLanguage": "en",
     "publicRegisterEnabled": true,
     "feedbackEnabled": true,
     "privacyPolicyUrl": null,

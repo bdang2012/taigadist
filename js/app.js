@@ -86,6 +86,17 @@
       controller: "ProjectsListing",
       controllerAs: "vm"
     });
+    $routeProvider.when("/users/", {
+      templateUrl: "users/listing/users-listing.html",
+      access: {
+        requiresLogin: true
+      },
+      title: "PROJECTS.PAGE_TITLE",
+      description: "PROJECTS.PAGE_DESCRIPTION",
+      loader: true,
+      controller: "UsersListing",
+      controllerAs: "vm"
+    });
     $routeProvider.when("/project/:pslug/", {
       templateUrl: "projects/project/project.html",
       loader: true,
@@ -135,6 +146,11 @@
     });
     $routeProvider.when("/project/:pslug/team", {
       templateUrl: "team/team.html",
+      loader: true,
+      section: "team"
+    });
+    $routeProvider.when("/project/:pslug/inventory", {
+      templateUrl: "team/inventory.html",
       loader: true,
       section: "team"
     });
@@ -492,7 +508,7 @@
     return plugin.module;
   });
 
-  modules = ["taigaBase", "taigaCommon", "taigaResources", "taigaResources2", "taigaAuth", "taigaEvents", "taigaHome", "taigaNavigationBar", "taigaProjects", "taigaRelatedTasks", "taigaBacklog", "taigaTaskboard", "taigaKanban", "taigaIssues", "taigaUserStories", "taigaTasks", "taigaTeam", "taigaWiki", "taigaSearch", "taigaAdmin", "taigaProject", "taigaUserSettings", "taigaFeedback", "taigaPlugins", "taigaIntegrations", "taigaComponents", "taigaProfile", "taigaHome", "taigaUserTimeline", "templates", "ngRoute", "ngAnimate", "pascalprecht.translate", "infinite-scroll", "tgRepeat"].concat(_.map(pluginsWithModule, function(plugin) {
+  modules = ["taigaBase", "taigaCommon", "taigaResources", "taigaResources2", "taigaAuth", "taigaEvents", "taigaHome", "taigaNavigationBar", "taigaProjects", "taigaUsers", "taigaRelatedTasks", "taigaBacklog", "taigaTaskboard", "taigaKanban", "taigaIssues", "taigaUserStories", "taigaTasks", "taigaTeam", "taigaWiki", "taigaSearch", "taigaAdmin", "taigaProject", "taigaUserSettings", "taigaFeedback", "taigaPlugins", "taigaIntegrations", "taigaComponents", "taigaProfile", "taigaHome", "taigaUserTimeline", "templates", "ngRoute", "ngAnimate", "pascalprecht.translate", "infinite-scroll", "tgRepeat"].concat(_.map(pluginsWithModule, function(plugin) {
     return plugin.module;
   }));
 
@@ -942,7 +958,10 @@
       this.scope.usersById = groupBy(this.scope.users, function(e) {
         return e.id;
       });
+      console.log('bdlog: in controllerMixins.coffee - before<<<<');
       this.scope.roles = _.sortBy(roles, "order");
+      console.log(this.scope.roles);
+      console.log('bdlog: after>>>>');
       availableRoles = _(this.scope.project.memberships).map("role").uniq().value();
       return this.scope.computableRoles = _(roles).filter("computable").filter(function(x) {
         return _.contains(availableRoles, x.id);
@@ -15117,9 +15136,9 @@
   TeamController = (function(superClass) {
     extend(TeamController, superClass);
 
-    TeamController.$inject = ["$scope", "$rootScope", "$tgRepo", "$tgResources", "$routeParams", "$q", "$location", "$tgNavUrls", "tgAppMetaService", "$tgAuth", "$translate", "tgProjectService"];
+    TeamController.$inject = ["$scope", "$rootScope", "$tgRepo", "$tgResources", "$routeParams", "$q", "$location", "$tgNavUrls", "tgAppMetaService", "$tgAuth", "$translate", "tgProjectService", "tgCurrentUserService"];
 
-    function TeamController(scope, rootscope, repo, rs, params, q, location, navUrls, appMetaService, auth, translate, projectService) {
+    function TeamController(scope, rootscope, repo, rs, params, q, location, navUrls, appMetaService, auth, translate, projectService, currentUserService) {
       var promise;
       this.scope = scope;
       this.rootscope = rootscope;
@@ -15133,6 +15152,7 @@
       this.auth = auth;
       this.translate = translate;
       this.projectService = projectService;
+      this.currentUserService = currentUserService;
       this.scope.sectionName = "TEAM.SECTION_NAME";
       promise = this.loadInitialData();
       promise.then((function(_this) {
@@ -15200,6 +15220,44 @@
         }
       }
       return results;
+    };
+
+    TeamController.prototype.loadInventoryBinhDang = function() {
+      var currentUser, i, inventory, len, membership, ref;
+      currentUser = this.auth.getUser();
+      if ((currentUser != null) && (currentUser.photo == null)) {
+        currentUser.photo = "/images/unnamed.png";
+      }
+      inventory = this.currentUserService.inventory.get("all").toJS();
+      this.scope.totals = {};
+      _.forEach(inventory, (function(_this) {
+        return function(membership) {
+          return _this.scope.totals[membership.user] = 0;
+        };
+      })(this));
+
+      /* binh blocked 
+      @scope.inventory = _.filter inventory, (membership) =>
+          if membership.user && (not currentUser? or membership.user != currentUser.id)
+              return membership
+       */
+      this.scope.inventory = _.filter(inventory, (function(_this) {
+        return function(membership) {
+          return membership.is_active;
+        };
+      })(this));
+      ref = this.scope.inventory;
+      for (i = 0, len = ref.length; i < len; i++) {
+        membership = ref[i];
+        if (membership.photo == null) {
+          membership.photo = "/images/unnamed.png";
+        }
+      }
+      console.log('bdlog: line 124 main.coffee @scope.inventory');
+      console.log(this.scope.inventory);
+      console.log('bdlog: line 127 main.coffee for @scope.inveotoryRoles');
+      this.scope.inventoryRoles = this.currentUserService.inventory.get("all").toJS();
+      return console.log(this.scope.inventoryRoles);
     };
 
     TeamController.prototype.loadProject = function() {
@@ -15270,6 +15328,7 @@
         return function(project) {
           _this.fillUsersAndRoles(project.users, project.roles);
           _this.loadMembers();
+          _this.loadInventoryBinhDang();
           return _this.loadMemberStats();
         };
       })(this));
@@ -23189,6 +23248,11 @@
 }).call(this);
 
 (function() {
+  angular.module("taigaUsers", []);
+
+}).call(this);
+
+(function() {
   var ProjectMenuController;
 
   ProjectMenuController = (function() {
@@ -24253,6 +24317,14 @@
       })(this));
     };
 
+    ProjectsService.prototype.getInventory = function(paginate) {
+      return this.rs.projects.getInventory(paginate).then((function(_this) {
+        return function(projects) {
+          return projects.map(_this._decorate.bind(_this));
+        };
+      })(this));
+    };
+
     ProjectsService.prototype._decorate = function(project) {
       var colorized_tags, tags, url;
       url = this.projectUrl.get(project.toJS());
@@ -24354,6 +24426,25 @@
       }
       params = {
         "member": userId,
+        "order_by": "memberships__user_order"
+      };
+      return http.get(url, params, httpOptions).then(function(result) {
+        return Immutable.fromJS(result.data);
+      });
+    };
+    service.getInventory = function(paginate) {
+      var httpOptions, params, url;
+      if (paginate == null) {
+        paginate = false;
+      }
+      url = urlsService.resolve("users");
+      httpOptions = {};
+      if (!paginate) {
+        httpOptions.headers = {
+          "x-disable-pagination": "1"
+        };
+      }
+      params = {
         "order_by": "memberships__user_order"
       };
       return http.get(url, params, httpOptions).then(function(result) {
@@ -24677,6 +24768,7 @@
       this._user = null;
       this._projects = Immutable.Map();
       this._projectsById = Immutable.Map();
+      this._inventory = Immutable.Map();
       taiga.defineImmutableProperty(this, "projects", (function(_this) {
         return function() {
           return _this._projects;
@@ -24685,6 +24777,11 @@
       taiga.defineImmutableProperty(this, "projectsById", (function(_this) {
         return function() {
           return _this._projectsById;
+        };
+      })(this));
+      taiga.defineImmutableProperty(this, "inventory", (function(_this) {
+        return function() {
+          return _this._inventory;
         };
       })(this));
     }
@@ -24731,6 +24828,8 @@
       return this.projectsService.getProjectsByUserId(this._user.get("id")).then((function(_this) {
         return function(projects) {
           _this._projects = _this._projects.set("all", projects);
+          console.log('bdlog: ');
+          console.log(_this._projects.toJS());
           _this._projects = _this._projects.set("recents", projects.slice(0, 10));
           _this._projectsById = Immutable.fromJS(groupBy(projects.toJS(), function(p) {
             return p.id;
@@ -24740,7 +24839,19 @@
       })(this));
     };
 
+    CurrentUserService.prototype._loadInventory = function() {
+      return this.projectsService.getInventory().then((function(_this) {
+        return function(inventory) {
+          _this._inventory = _this._inventory.set("all", inventory);
+          console.log('bdlog: in loadInventory ');
+          console.log(_this._inventory.toJS());
+          return _this.inventory;
+        };
+      })(this));
+    };
+
     CurrentUserService.prototype._loadUserInfo = function() {
+      this._loadInventory();
       return this._loadProjects();
     };
 
@@ -25726,6 +25837,127 @@
 
 }).call(this);
 
+(function() {
+  var UsersListingController;
+
+  UsersListingController = (function() {
+    UsersListingController.$inject = ["tgCurrentUserService", "tgUsersService"];
+
+    function UsersListingController(currentUserService, usersService) {
+      this.currentUserService = currentUserService;
+      this.usersService = usersService;
+      taiga.defineImmutableProperty(this, "projects", (function(_this) {
+        return function() {
+          return _this.currentUserService.projects.get("all");
+        };
+      })(this));
+      taiga.defineImmutableProperty(this, "inventory", (function(_this) {
+        return function() {
+          return _this.currentUserService.inventory.get("all");
+        };
+      })(this));
+    }
+
+    UsersListingController.prototype.newProject = function() {
+      return this.usersService.newProject();
+    };
+
+    return UsersListingController;
+
+  })();
+
+  angular.module("taigaUsers").controller("UsersListing", UsersListingController);
+
+}).call(this);
+
+(function() {
+  var UsersService, groupBy, taiga,
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
+
+  taiga = this.taiga;
+
+  groupBy = this.taiga.groupBy;
+
+  UsersService = (function(superClass) {
+    extend(UsersService, superClass);
+
+    UsersService.$inject = ["tgResources", "$projectUrl", "tgLightboxFactory"];
+
+    function UsersService(rs, projectUrl, lightboxFactory) {
+      this.rs = rs;
+      this.projectUrl = projectUrl;
+      this.lightboxFactory = lightboxFactory;
+    }
+
+    UsersService.prototype.getProjectBySlug = function(projectSlug) {
+      return this.rs.projects.getProjectBySlug(projectSlug).then((function(_this) {
+        return function(project) {
+          return _this._decorate(project);
+        };
+      })(this));
+    };
+
+    UsersService.prototype.getProjectStats = function(projectId) {
+      return this.rs.projects.getProjectStats(projectId);
+    };
+
+    UsersService.prototype.getProjectsByUserId = function(userId, paginate) {
+      return this.rs.projects.getProjectsByUserId(userId, paginate).then((function(_this) {
+        return function(projects) {
+          return projects.map(_this._decorate.bind(_this));
+        };
+      })(this));
+    };
+
+    UsersService.prototype.getInventory = function() {
+      var names;
+      names = [
+        {
+          'name': 'binh'
+        }
+      ];
+      return Immutable.fromJS(names);
+    };
+
+    UsersService.prototype._decorate = function(project) {
+      var colorized_tags, tags, url;
+      url = this.projectUrl.get(project.toJS());
+      project = project.set("url", url);
+      colorized_tags = [];
+      if (project.get("tags")) {
+        tags = project.get("tags").sort();
+        colorized_tags = tags.map(function(tag) {
+          var color;
+          color = project.get("tags_colors").get(tag);
+          return Immutable.fromJS({
+            name: tag,
+            color: color
+          });
+        });
+        project = project.set("colorized_tags", colorized_tags);
+      }
+      return project;
+    };
+
+    UsersService.prototype.newProject = function() {
+      return this.lightboxFactory.create("tg-lb-create-project", {
+        "class": "wizard-create-project"
+      });
+    };
+
+    UsersService.prototype.bulkUpdateProjectsOrder = function(sortData) {
+      return this.rs.projects.bulkUpdateOrder(sortData);
+    };
+
+    return UsersService;
+
+  })(taiga.Service);
+
+  angular.module("taigaUsers").service("tgUsersService", UsersService);
+
+}).call(this);
+
 
 /*
  * Copyright (C) 2014 Andrey Antukh <niwi@niwi.be>
@@ -25848,6 +26080,275 @@
   };
 
   module.directive("tgTermsNotice", ["$tgConfig", TermsNoticeDirective]);
+
+}).call(this);
+
+
+/*
+ * Copyright (C) 2014 Andrey Antukh <niwi@niwi.be>
+ * Copyright (C) 2014 Jesús Espino Garcia <jespinog@gmail.com>
+ * Copyright (C) 2014 David Barragán Merino <bameda@dbarragan.com>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * File: modules/team/main.coffee
+ */
+
+(function() {
+  var InventoryController, InventoryFiltersDirective, InventoryMembersDirective, mixOf, module, taiga,
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
+
+  taiga = this.taiga;
+
+  mixOf = this.taiga.mixOf;
+
+  module = angular.module("taigaTeam");
+
+  InventoryController = (function(superClass) {
+    extend(InventoryController, superClass);
+
+    InventoryController.$inject = ["$scope", "$rootScope", "$tgRepo", "$tgResources", "$routeParams", "$q", "$location", "$tgNavUrls", "tgAppMetaService", "$tgAuth", "$translate", "tgProjectService", "tgCurrentUserService"];
+
+    function InventoryController(scope, rootscope, repo, rs, params, q, location, navUrls, appMetaService, auth, translate, projectService, currentUserService) {
+      var promise;
+      this.scope = scope;
+      this.rootscope = rootscope;
+      this.repo = repo;
+      this.rs = rs;
+      this.params = params;
+      this.q = q;
+      this.location = location;
+      this.navUrls = navUrls;
+      this.appMetaService = appMetaService;
+      this.auth = auth;
+      this.translate = translate;
+      this.projectService = projectService;
+      this.currentUserService = currentUserService;
+      this.scope.sectionName = "TEAM.SECTION_NAME";
+      promise = this.loadInitialData();
+      promise.then((function(_this) {
+        return function() {
+          var description, title;
+          title = _this.translate.instant("TEAM.PAGE_TITLE", {
+            projectName: _this.scope.project.name
+          });
+          description = _this.translate.instant("TEAM.PAGE_DESCRIPTION", {
+            projectName: _this.scope.project.name,
+            projectDescription: _this.scope.project.description
+          });
+          return _this.appMetaService.setAll(title, description);
+        };
+      })(this));
+      promise.then(null, this.onInitialDataError.bind(this));
+    }
+
+    InventoryController.prototype.setRole = function(role) {
+      if (role) {
+        return this.scope.filtersRole = role;
+      } else {
+        return this.scope.filtersRole = null;
+      }
+    };
+
+    InventoryController.prototype.loadMembers = function() {
+      var currentUser, i, len, membership, memberships, ref, results;
+      currentUser = this.auth.getUser();
+      if ((currentUser != null) && (currentUser.photo == null)) {
+        currentUser.photo = "/images/unnamed.png";
+      }
+      memberships = this.projectService.project.toJS().memberships;
+      this.scope.currentUser = _.find(memberships, (function(_this) {
+        return function(membership) {
+          return (currentUser != null) && membership.user === currentUser.id;
+        };
+      })(this));
+      this.scope.totals = {};
+      _.forEach(memberships, (function(_this) {
+        return function(membership) {
+          return _this.scope.totals[membership.user] = 0;
+        };
+      })(this));
+      this.scope.memberships = _.filter(memberships, (function(_this) {
+        return function(membership) {
+          if (membership.user && ((currentUser == null) || membership.user !== currentUser.id)) {
+            return membership;
+          }
+        };
+      })(this));
+      this.scope.memberships = _.filter(memberships, (function(_this) {
+        return function(membership) {
+          return membership.is_active;
+        };
+      })(this));
+      ref = this.scope.memberships;
+      results = [];
+      for (i = 0, len = ref.length; i < len; i++) {
+        membership = ref[i];
+        if (membership.photo == null) {
+          results.push(membership.photo = "/images/unnamed.png");
+        } else {
+          results.push(void 0);
+        }
+      }
+      return results;
+    };
+
+    InventoryController.prototype.loadInventoryBinhDang = function() {
+      var currentUser, i, inventory, len, membership, ref;
+      currentUser = this.auth.getUser();
+      if ((currentUser != null) && (currentUser.photo == null)) {
+        currentUser.photo = "/images/unnamed.png";
+      }
+      inventory = this.currentUserService.inventory.get("all").toJS();
+      this.scope.totals = {};
+      _.forEach(inventory, (function(_this) {
+        return function(membership) {
+          return _this.scope.totals[membership.user] = 0;
+        };
+      })(this));
+
+      /* binh blocked 
+      @scope.inventory = _.filter inventory, (membership) =>
+          if membership.user && (not currentUser? or membership.user != currentUser.id)
+              return membership
+       */
+      this.scope.inventory = _.filter(inventory, (function(_this) {
+        return function(membership) {
+          return membership.is_active;
+        };
+      })(this));
+      ref = this.scope.inventory;
+      for (i = 0, len = ref.length; i < len; i++) {
+        membership = ref[i];
+        if (membership.photo == null) {
+          membership.photo = "/images/unnamed.png";
+        }
+      }
+      console.log('bdlog: line 124 main.coffee @scope.inventory');
+      console.log(this.scope.inventory);
+      console.log('bdlog: line 127 main.coffee for @scope.inveotoryRoles');
+      this.scope.inventoryRoles = this.currentUserService.inventory.get("all").toJS();
+      return console.log(this.scope.inventoryRoles);
+    };
+
+    InventoryController.prototype.loadProject = function() {
+      return this.rs.projects.getBySlug(this.params.pslug).then((function(_this) {
+        return function(project) {
+          _this.scope.projectId = project.id;
+          _this.scope.project = project;
+          _this.scope.$emit('project:loaded', project);
+          _this.scope.issuesEnabled = project.is_issues_activated;
+          _this.scope.tasksEnabled = project.is_kanban_activated || project.is_backlog_activated;
+          _this.scope.wikiEnabled = project.is_wiki_activated;
+          return project;
+        };
+      })(this));
+    };
+
+    InventoryController.prototype.loadMemberStats = function() {
+      return this.rs.projects.memberStats(this.scope.projectId).then((function(_this) {
+        return function(stats) {
+          var totals;
+          totals = {};
+          _.forEach(_this.scope.totals, function(total, userId) {
+            var vals;
+            vals = _.map(stats, function(memberStats, statsKey) {
+              return memberStats[userId];
+            });
+            total = _.reduce(vals, function(sum, el) {
+              return sum + el;
+            });
+            return _this.scope.totals[userId] = total;
+          });
+          _this.scope.stats = _this.processStats(stats);
+          return _this.scope.stats.totals = _this.scope.totals;
+        };
+      })(this));
+    };
+
+    InventoryController.prototype.processStat = function(stat) {
+      var max, min, singleStat;
+      max = _.max(stat);
+      min = _.min(stat);
+      singleStat = _.map(stat, function(value, key) {
+        if (value === min) {
+          return [key, 0.1];
+        }
+        if (value === max) {
+          return [key, 1];
+        }
+        return [key, (value * 0.5) / max];
+      });
+      singleStat = _.object(singleStat);
+      return singleStat;
+    };
+
+    InventoryController.prototype.processStats = function(stats) {
+      var key, value;
+      for (key in stats) {
+        value = stats[key];
+        stats[key] = this.processStat(value);
+      }
+      return stats;
+    };
+
+    InventoryController.prototype.loadInitialData = function() {
+      var promise;
+      promise = this.loadProject();
+      return promise.then((function(_this) {
+        return function(project) {
+          _this.fillUsersAndRoles(project.users, project.roles);
+          _this.loadMembers();
+          _this.loadInventoryBinhDang();
+          return _this.loadMemberStats();
+        };
+      })(this));
+    };
+
+    return InventoryController;
+
+  })(mixOf(taiga.Controller, taiga.PageMixin));
+
+  module.controller("InventoryController", InventoryController);
+
+  InventoryFiltersDirective = function() {
+    return {
+      templateUrl: "team/inventory-filter.html"
+    };
+  };
+
+  module.directive("tgInventoryFilters", [InventoryFiltersDirective]);
+
+  InventoryMembersDirective = function() {
+    var template;
+    template = "team/inventory-members.html";
+    return {
+      templateUrl: template,
+      scope: {
+        memberships: "=",
+        filtersQ: "=filtersq",
+        filtersRole: "=filtersrole",
+        stats: "=",
+        issuesEnabled: "=issuesenabled",
+        tasksEnabled: "=tasksenabled",
+        wikiEnabled: "=wikienabled"
+      }
+    };
+  };
+
+  module.directive("tgInventoryMembers", InventoryMembersDirective);
 
 }).call(this);
 

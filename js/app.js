@@ -97,6 +97,17 @@
       controller: "UsersListing",
       controllerAs: "vm"
     });
+    $routeProvider.when("/agents/", {
+      templateUrl: "agents/listing/agents-listing.html",
+      access: {
+        requiresLogin: true
+      },
+      title: "Agents Listing",
+      description: "Agents Listing",
+      loader: true,
+      controller: "AgentsListing",
+      controllerAs: "vm"
+    });
     $routeProvider.when("/project/:pslug/", {
       templateUrl: "projects/project/project.html",
       loader: true,
@@ -508,7 +519,7 @@
     return plugin.module;
   });
 
-  modules = ["taigaBase", "taigaCommon", "taigaResources", "taigaResources2", "taigaAuth", "taigaEvents", "taigaHome", "taigaNavigationBar", "taigaProjects", "taigaUsers", "taigaRelatedTasks", "taigaBacklog", "taigaTaskboard", "taigaKanban", "taigaIssues", "taigaUserStories", "taigaTasks", "taigaTeam", "taigaWiki", "taigaSearch", "taigaAdmin", "taigaProject", "taigaUserSettings", "taigaFeedback", "taigaPlugins", "taigaIntegrations", "taigaComponents", "taigaProfile", "taigaHome", "taigaUserTimeline", "templates", "ngRoute", "ngAnimate", "pascalprecht.translate", "infinite-scroll", "tgRepeat"].concat(_.map(pluginsWithModule, function(plugin) {
+  modules = ["taigaBase", "taigaCommon", "taigaResources", "taigaResources2", "taigaAuth", "taigaEvents", "taigaHome", "taigaNavigationBar", "taigaProjects", "taigaUsers", "taigaAgents", "taigaRelatedTasks", "taigaBacklog", "taigaTaskboard", "taigaKanban", "taigaIssues", "taigaUserStories", "taigaTasks", "taigaTeam", "taigaWiki", "taigaSearch", "taigaAdmin", "taigaProject", "taigaUserSettings", "taigaFeedback", "taigaPlugins", "taigaIntegrations", "taigaComponents", "taigaProfile", "taigaHome", "taigaUserTimeline", "templates", "ngRoute", "ngAnimate", "pascalprecht.translate", "infinite-scroll", "tgRepeat"].concat(_.map(pluginsWithModule, function(plugin) {
     return plugin.module;
   }));
 
@@ -1223,6 +1234,10 @@
         return function(data, status) {
           var user;
           user = _this.model.make_model("users", data.data);
+          console.log('<<<<bdlog: in autho.coffee login:');
+          console.log('return data:');
+          console.log(data.data);
+          console.log('>>>>>');
           _this.setToken(user.auth_token);
           _this.setUser(user);
           return user;
@@ -2934,6 +2949,7 @@
     "invitations": "/invitations",
     "users": "/users",
     "by_username": "/users/by_username",
+    "by_agents": "/users/by_agents",
     "users-password-recovery": "/users/password_recovery",
     "users-change-password-from-recovery": "/users/change_password_from_recovery",
     "users-change-password": "/users/change_password",
@@ -23188,6 +23204,11 @@
 
 }).call(this);
 
+(function() {
+  angular.module("taigaAgents", []);
+
+}).call(this);
+
 
 /*
  * Copyright (C) 2015 Taiga Agile LLC
@@ -23249,6 +23270,65 @@
 
 (function() {
   angular.module("taigaUsers", []);
+
+}).call(this);
+
+(function() {
+  var AgentsService, taiga,
+    extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+    hasProp = {}.hasOwnProperty;
+
+  taiga = this.taiga;
+
+  AgentsService = (function(superClass) {
+    extend(AgentsService, superClass);
+
+    AgentsService.$inject = ["tgResources", "$projectUrl", "tgLightboxFactory"];
+
+    function AgentsService(rs, projectUrl, lightboxFactory) {
+      this.rs = rs;
+      this.projectUrl = projectUrl;
+      this.lightboxFactory = lightboxFactory;
+    }
+
+    return AgentsService;
+
+  })(taiga.Service);
+
+  angular.module("taigaAgents").service("tgAgentsService", AgentsService);
+
+}).call(this);
+
+(function() {
+  var AgentsListingController;
+
+  AgentsListingController = (function() {
+    AgentsListingController.$inject = ["tgCurrentUserService", "tgUsersService"];
+
+    function AgentsListingController(currentUserService, usersService) {
+      this.currentUserService = currentUserService;
+      this.usersService = usersService;
+      taiga.defineImmutableProperty(this, "projects", (function(_this) {
+        return function() {
+          return _this.currentUserService.projects.get("all");
+        };
+      })(this));
+      taiga.defineImmutableProperty(this, "inventory", (function(_this) {
+        return function() {
+          return _this.currentUserService.inventory.get("all");
+        };
+      })(this));
+    }
+
+    AgentsListingController.prototype.newProject = function() {
+      return this.usersService.newProject();
+    };
+
+    return AgentsListingController;
+
+  })();
+
+  angular.module("taigaAgents").controller("AgentsListing", AgentsListingController);
 
 }).call(this);
 
@@ -23796,8 +23876,17 @@
       taiga.defineImmutableProperty(scope.vm, "projects", function() {
         return currentUserService.projects.get("recents");
       });
-      return taiga.defineImmutableProperty(scope.vm, "isAuthenticated", function() {
+      taiga.defineImmutableProperty(scope.vm, "isAuthenticated", function() {
         return currentUserService.isAuthenticated();
+      });
+      taiga.defineImmutableProperty(scope.vm, "isProducer", function() {
+        return currentUserService.isProducer();
+      });
+      taiga.defineImmutableProperty(scope.vm, "isAgent", function() {
+        return currentUserService.isAgent();
+      });
+      return taiga.defineImmutableProperty(scope.vm, "isProducerOrAgent", function() {
+        return currentUserService.isProducerOrAgent();
       });
     };
     directive = {
@@ -24559,6 +24648,42 @@
   Resource = function(urlsService, http, paginateResponseService) {
     var service;
     service = {};
+    service.getInventory = function(paginate) {
+      var httpOptions, params, url;
+      if (paginate == null) {
+        paginate = false;
+      }
+      url = urlsService.resolve("users");
+      httpOptions = {};
+      if (!paginate) {
+        httpOptions.headers = {
+          "x-disable-pagination": "1"
+        };
+      }
+      params = {
+        "order_by": "memberships__user_order"
+      };
+      return http.get(url, params, httpOptions).then(function(result) {
+        return Immutable.fromJS(result.data);
+      });
+    };
+    service.getAgents = function(paginate) {
+      var httpOptions, params, url;
+      if (paginate == null) {
+        paginate = false;
+      }
+      url = urlsService.resolve("by_agents");
+      httpOptions = {};
+      if (!paginate) {
+        httpOptions.headers = {
+          "x-disable-pagination": "1"
+        };
+      }
+      params = {};
+      return http.get(url, params, httpOptions).then(function(result) {
+        return Immutable.fromJS(result.data);
+      });
+    };
     service.getUserByUsername = function(username) {
       var httpOptions, params, url;
       url = urlsService.resolve("by_username");
@@ -24671,6 +24796,11 @@
 }).call(this);
 
 (function() {
+
+
+}).call(this);
+
+(function() {
   var AppMetaService, taiga, truncate,
     extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     hasProp = {}.hasOwnProperty;
@@ -24760,15 +24890,17 @@
   groupBy = this.taiga.groupBy;
 
   CurrentUserService = (function() {
-    CurrentUserService.$inject = ["tgProjectsService", "$tgStorage"];
+    CurrentUserService.$inject = ["tgProjectsService", "$tgStorage", "tgUsersService"];
 
-    function CurrentUserService(projectsService, storageService) {
+    function CurrentUserService(projectsService, storageService, usersService) {
       this.projectsService = projectsService;
       this.storageService = storageService;
+      this.usersService = usersService;
       this._user = null;
       this._projects = Immutable.Map();
       this._projectsById = Immutable.Map();
       this._inventory = Immutable.Map();
+      this._agents = Immutable.Map();
       taiga.defineImmutableProperty(this, "projects", (function(_this) {
         return function() {
           return _this._projects;
@@ -24784,6 +24916,11 @@
           return _this._inventory;
         };
       })(this));
+      taiga.defineImmutableProperty(this, "agents", (function(_this) {
+        return function() {
+          return _this._agents;
+        };
+      })(this));
     }
 
     CurrentUserService.prototype.isAuthenticated = function() {
@@ -24791,6 +24928,24 @@
         return true;
       }
       return false;
+    };
+
+    CurrentUserService.prototype.isProducer = function() {
+      if (!this._user) {
+        return false;
+      }
+      return this._user.get("is_producer");
+    };
+
+    CurrentUserService.prototype.isAgent = function() {
+      if (!this._user) {
+        return false;
+      }
+      return this._user.get("is_agent");
+    };
+
+    CurrentUserService.prototype.isProducerOrAgent = function() {
+      return this.isProducer() || this.isAgent();
     };
 
     CurrentUserService.prototype.getUser = function() {
@@ -24850,8 +25005,18 @@
       })(this));
     };
 
+    CurrentUserService.prototype._loadAgents = function() {
+      return this.usersService.getAgents().then((function(_this) {
+        return function(agents) {
+          _this._agents = _this._agents.set("all", agents);
+          return _this.agents;
+        };
+      })(this));
+    };
+
     CurrentUserService.prototype._loadUserInfo = function() {
       this._loadInventory();
+      this._loadAgents();
       return this._loadProjects();
     };
 
@@ -25910,14 +26075,20 @@
       })(this));
     };
 
-    UsersService.prototype.getInventory = function() {
-      var names;
-      names = [
-        {
-          'name': 'binh'
-        }
-      ];
-      return Immutable.fromJS(names);
+    UsersService.prototype.getAgents = function(paginate) {
+      return this.rs.users.getAgents(paginate).then((function(_this) {
+        return function(agents) {
+          return agents.map(_this._decorate.bind(_this));
+        };
+      })(this));
+    };
+
+    UsersService.prototype.getInventory = function(paginate) {
+      return this.rs.projects.getInventory(paginate).then((function(_this) {
+        return function(projects) {
+          return projects.map(_this._decorate.bind(_this));
+        };
+      })(this));
     };
 
     UsersService.prototype._decorate = function(project) {

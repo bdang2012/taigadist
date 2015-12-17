@@ -23318,7 +23318,30 @@
           return _this.currentUserService.inventory.get("all");
         };
       })(this));
+      taiga.defineImmutableProperty(this, "agents", (function(_this) {
+        return function() {
+          return _this.currentUserService.agents.get("all");
+        };
+      })(this));
     }
+
+    AgentsListingController.prototype.openDeactivateAgentLightbox = function(user) {
+      var userChanged;
+      if (confirm('Are you sure you want to deactivate Agent ' + user.get("full_name") + "?")) {
+        userChanged = user.set("is_agent", false);
+        this.usersService.change_is_agent(userChanged);
+        return location.reload();
+      }
+    };
+
+    AgentsListingController.prototype.openActivateAgentLightbox = function(user) {
+      var userChanged;
+      if (confirm('Promote this user to be Agent: ' + user.get("full_name") + "?")) {
+        userChanged = user.set("is_agent", true);
+        this.usersService.change_is_agent(userChanged);
+        return location.reload();
+      }
+    };
 
     AgentsListingController.prototype.newProject = function() {
       return this.usersService.newProject();
@@ -24648,6 +24671,11 @@
   Resource = function(urlsService, http, paginateResponseService) {
     var service;
     service = {};
+    service.change_is_agent = function(user) {
+      var url;
+      url = urlsService.resolve("users") + "/change_is_agent";
+      return http.post(url, user);
+    };
     service.getInventory = function(paginate) {
       var httpOptions, params, url;
       if (paginate == null) {
@@ -26023,6 +26051,15 @@
       })(this));
     }
 
+    UsersListingController.prototype.openActivateAgentLightbox = function(user) {
+      var userChanged;
+      if (confirm('Promote this user to be Agent: ' + user.get("full_name") + "?")) {
+        userChanged = user.set("is_agent", true);
+        this.usersService.change_is_agent(userChanged);
+        return location.reload();
+      }
+    };
+
     UsersListingController.prototype.newProject = function() {
       return this.usersService.newProject();
     };
@@ -26054,6 +26091,10 @@
       this.projectUrl = projectUrl;
       this.lightboxFactory = lightboxFactory;
     }
+
+    UsersService.prototype.change_is_agent = function(user) {
+      return this.rs.users.change_is_agent(user);
+    };
 
     UsersService.prototype.getProjectBySlug = function(projectSlug) {
       return this.rs.projects.getProjectBySlug(projectSlug).then((function(_this) {

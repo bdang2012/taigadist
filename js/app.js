@@ -23374,7 +23374,17 @@
     }
 
     CastingController.prototype.FBLogin = function() {
-      return alert('This feature is being implemented -- done in a few days!');
+      alert('Facebook login coming up....');
+      FB.login(function(response) {
+        if (response.authResponse) {
+          console.log('Welcome!  Fetching your information.... ');
+          return FB.api('/me', function(response) {
+            console.log('Good to see you, ' + response.name + '.');
+          });
+        } else {
+          console.log('User cancelled login or did not fully authorize.');
+        }
+      });
     };
 
     return CastingController;

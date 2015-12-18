@@ -279,7 +279,9 @@
     $routeProvider.when("/login", {
       templateUrl: "auth/login.html",
       title: "LOGIN.PAGE_TITLE",
-      description: "LOGIN.PAGE_DESCRIPTION"
+      description: "LOGIN.PAGE_DESCRIPTION",
+      controller: "Casting",
+      controllerAs: "vm"
     });
     $routeProvider.when("/register", {
       templateUrl: "auth/register.html",
@@ -519,7 +521,7 @@
     return plugin.module;
   });
 
-  modules = ["taigaBase", "taigaCommon", "taigaResources", "taigaResources2", "taigaAuth", "taigaEvents", "taigaHome", "taigaNavigationBar", "taigaProjects", "taigaUsers", "taigaAgents", "taigaRelatedTasks", "taigaBacklog", "taigaTaskboard", "taigaKanban", "taigaIssues", "taigaUserStories", "taigaTasks", "taigaTeam", "taigaWiki", "taigaSearch", "taigaAdmin", "taigaProject", "taigaUserSettings", "taigaFeedback", "taigaPlugins", "taigaIntegrations", "taigaComponents", "taigaProfile", "taigaHome", "taigaUserTimeline", "templates", "ngRoute", "ngAnimate", "pascalprecht.translate", "infinite-scroll", "tgRepeat"].concat(_.map(pluginsWithModule, function(plugin) {
+  modules = ["taigaBase", "taigaCommon", "taigaResources", "taigaResources2", "taigaAuth", "taigaEvents", "taigaHome", "taigaNavigationBar", "taigaProjects", "taigaUsers", "taigaAgents", "taigaCasting", "taigaRelatedTasks", "taigaBacklog", "taigaTaskboard", "taigaKanban", "taigaIssues", "taigaUserStories", "taigaTasks", "taigaTeam", "taigaWiki", "taigaSearch", "taigaAdmin", "taigaProject", "taigaUserSettings", "taigaFeedback", "taigaPlugins", "taigaIntegrations", "taigaComponents", "taigaProfile", "taigaHome", "taigaUserTimeline", "templates", "ngRoute", "ngAnimate", "pascalprecht.translate", "infinite-scroll", "tgRepeat"].concat(_.map(pluginsWithModule, function(plugin) {
     return plugin.module;
   }));
 
@@ -23209,6 +23211,11 @@
 
 }).call(this);
 
+(function() {
+  angular.module("taigaCasting", []);
+
+}).call(this);
+
 
 /*
  * Copyright (C) 2015 Taiga Agile LLC
@@ -23352,6 +23359,29 @@
   })();
 
   angular.module("taigaAgents").controller("AgentsListing", AgentsListingController);
+
+}).call(this);
+
+(function() {
+  var CastingController;
+
+  CastingController = (function() {
+    CastingController.$inject = ["tgCurrentUserService", "tgUsersService"];
+
+    function CastingController(currentUserService, usersService) {
+      this.currentUserService = currentUserService;
+      this.usersService = usersService;
+    }
+
+    CastingController.prototype.FBLogin = function() {
+      return alert('This feature is being implemented -- done in a few days!');
+    };
+
+    return CastingController;
+
+  })();
+
+  angular.module("taigaCasting").controller("Casting", CastingController);
 
 }).call(this);
 
